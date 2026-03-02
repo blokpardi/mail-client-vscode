@@ -1,6 +1,6 @@
 # Changelog
 
-## [ upcoming ]
+## [0.10.0]
 
 ### Added
 - **Account Settings**: Added support for Jira API Key / Auth Token in account configuration.
