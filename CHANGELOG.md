@@ -1,6 +1,6 @@
 # Changelog
 
-## [ upcoming ]
+## [0.10.2]
 
 ### Fixed
 - **Outgoing Mail**: Fixed an issue where the plain text part (`text/plain`) was not properly generated in WYSIWYG mode or missing the quoted original message in both modes.
