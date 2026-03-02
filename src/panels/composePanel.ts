@@ -398,11 +398,25 @@ export class ComposePanel {
         archiveOriginal: boolean = false,
     ): Promise<void> {
         // Get body HTML based on mode
+        // Get body HTML and Text based on mode
         let bodyHtml: string;
+        let bodyText: string;
         if (this.isWysiwyg) {
             bodyHtml = this.wysiwygHtml;
+            // Generate plain text from WYSIWYG html (basic stripping)
+            bodyText = bodyHtml
+                .replace(/<br\s*\/?>/gi, '\n')
+                .replace(/<\/div>/gi, '\n')
+                .replace(/<\/p>/gi, '\n\n')
+                .replace(/<[^>]+>/g, '')
+                .replace(/&nbsp;/g, ' ')
+                .replace(/&amp;/g, '&')
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&quot;/g, '"');
         } else {
             bodyHtml = await marked.parse(this.currentMarkdown);
+            bodyText = this.currentMarkdown;
         }
 
         // For reply/forward, append quoted original message in both Markdown and WYSIWYG modes
@@ -410,22 +424,49 @@ export class ComposePanel {
             const orig = this.options.originalMessage;
             const isForward = this.options.mode === 'forward';
             const separatorLabel = isForward ? 'Forwarded message' : 'Original message';
-            const fromDisplay = orig.from.name
-                ? `${orig.from.name} &lt;${orig.from.address}&gt;`
-                : orig.from.address;
-            const toDisplay = orig.to.map(t =>
-                t.name ? `${t.name} &lt;${t.address}&gt;` : t.address
-            ).join(', ');
+            
+            // Plain text values
+            const origFrom = orig.from.name ? `${orig.from.name} <${orig.from.address}>` : orig.from.address;
+            const origTo = orig.to.map(t => t.name ? `${t.name} <${t.address}>` : t.address).join(', ');
+            
+            // HTML encoded values
+            const fromDisplayHtml = this.escapeHtml(origFrom);
+            const toDisplayHtml = this.escapeHtml(origTo);
+            
             const dateStr = orig.date.toLocaleDateString() + ' ' + orig.date.toLocaleTimeString();
-            const subjectStr = this.escapeHtml(orig.subject || '');
+            const subjectStr = orig.subject || '';
+            const subjectStrHtml = this.escapeHtml(subjectStr);
 
-            const separator = `<p style="margin-top:20px;">---------- ${separatorLabel} ----------<br>` +
-                `From: ${fromDisplay}<br>` +
-                `To: ${toDisplay}<br>` +
+            const separatorHtml = `<p style="margin-top:20px;">---------- ${separatorLabel} ----------<br>` +
+                `From: ${fromDisplayHtml}<br>` +
+                `To: ${toDisplayHtml}<br>` +
                 `Date: ${dateStr}<br>` +
-                `Subject: ${subjectStr}</p>`;
-            const quotedBody = orig.html || `<pre>${this.escapeHtml(orig.text || '')}</pre>`;
-            bodyHtml += `\n${separator}\n<div>\n${quotedBody}\n</div>`;
+                `Subject: ${subjectStrHtml}</p>`;
+            
+            const separatorText = `\n\n---------- ${separatorLabel} ----------\n` +
+                `From: ${origFrom}\n` +
+                `To: ${origTo}\n` +
+                `Date: ${dateStr}\n` +
+                `Subject: ${subjectStr}\n\n`;
+
+            const quotedBodyHtml = orig.html || `<pre>${this.escapeHtml(orig.text || '')}</pre>`;
+            bodyHtml += `\n${separatorHtml}\n<div>\n${quotedBodyHtml}\n</div>`;
+
+            let quotedBodyText = orig.text || '';
+            if (!quotedBodyText && orig.html) {
+                // Fallback to html stripped if original text is missing
+                quotedBodyText = orig.html
+                    .replace(/<br\s*\/?>/gi, '\n')
+                    .replace(/<\/div>/gi, '\n')
+                    .replace(/<\/p>/gi, '\n\n')
+                    .replace(/<[^>]+>/g, '')
+                    .replace(/&nbsp;/g, ' ')
+                    .replace(/&amp;/g, '&')
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&quot;/g, '"');
+            }
+            bodyText += `${separatorText}${quotedBodyText.trim()}`;
         }
 
         const fromAddress = account.smtpUsername || account.username;
@@ -440,7 +481,7 @@ export class ComposePanel {
             bcc: bcc || undefined,
             subject,
             html: bodyHtml,
-            text: this.currentMarkdown,
+            text: bodyText,
             attachments: this.attachments.map(p => ({
                 path: p,
                 filename: path.basename(p)

@@ -206,7 +206,7 @@ const doSave = () => {
          if (val) {
              const summaryToSave = lastJiraSearchResultSummary || jiraSearchQueryInput.value.trim();
              vscode.postMessage({ type: 'jiraPair', subject: currentMessage.subject, issueKey: val, summary: summaryToSave });
-             btnJiraPairText.innerText = 'JIRA #' + val;
+             btnJiraPairText.innerText = '#' + val;
              currentMessage.pairedJiraIssue = val;
              currentMessage.pairedJiraIssueSummary = summaryToSave;
          } else {

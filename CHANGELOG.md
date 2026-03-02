@@ -1,5 +1,11 @@
 # Changelog
 
+## [ upcoming ]
+
+### Fixed
+- **Outgoing Mail**: Fixed an issue where the plain text part (`text/plain`) was not properly generated in WYSIWYG mode or missing the quoted original message in both modes.
+- **Jira Integration**: Shortened the JIRA pairing button label from "JIRA #KEY" to "#KEY" for a more compact UI in the message detail view.
+
 ## [0.10.1]
 
 ### Fixed
