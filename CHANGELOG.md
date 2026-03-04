@@ -1,6 +1,6 @@
 # Changelog
 
-## [ upcoming ]
+## [0.12.0]
 
 ### Changed
 - **Jira Integration**: The "Pair to JIRA issue" modal now remains open after successful pairing and displays a "Saved" message, allowing the user to immediately add a comment without reopening the modal.
