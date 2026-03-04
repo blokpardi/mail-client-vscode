@@ -96,7 +96,8 @@ const jiraCommentStatus = document.getElementById('jiraCommentStatus');
 
 const updateCommentButtonVisibility = () => {
      const val = jiraInput.value.trim();
-     if (val) {
+     const isPaired = currentMessage && currentMessage.pairedJiraIssue && currentMessage.pairedJiraIssue === val;
+     if (isPaired) {
          btnJiraCommentStart.classList.remove('hidden');
      } else {
          btnJiraCommentStart.classList.add('hidden');
@@ -209,16 +210,17 @@ const doSave = () => {
              btnJiraPairText.innerText = '#' + val;
              currentMessage.pairedJiraIssue = val;
              currentMessage.pairedJiraIssueSummary = summaryToSave;
+             jiraStatus.innerHTML = '<span style="color:var(--vscode-testing-iconPassed);">Saved successfully.</span>';
          } else {
              // Clear the pairing
              vscode.postMessage({ type: 'jiraPair', subject: currentMessage.subject, issueKey: '', summary: '' });
              btnJiraPairText.innerText = 'JIRA';
              currentMessage.pairedJiraIssue = '';
              currentMessage.pairedJiraIssueSummary = '';
+             jiraStatus.innerHTML = '<span style="color:var(--vscode-testing-iconPassed);">Pairing cleared.</span>';
          }
          updateCommentButtonVisibility();
     }
-    jiraModal.classList.add('hidden');
 };
 document.getElementById('btnJiraSave').addEventListener('click', doSave);
 jiraInput.addEventListener('keyup', (e) => {
