@@ -19,6 +19,8 @@ export class MessageListPanel {
     private currentSearchQuery: string = '';
     private currentMessages: IMailMessage[] = [];
     public activeUid?: number;
+    private currentPage: number = 1;
+    private totalMessages: number = 0;
 
     private constructor(
         panel: vscode.WebviewPanel,
@@ -63,6 +65,7 @@ export class MessageListPanel {
             active.folderPath = folderPath;
             active.folderName = folderName;
             active.currentSearchQuery = ''; // Reset search on folder switch
+            active.currentPage = 1; // Reset page
             
             // Revert any embedded view to list view
             active.clearEmbeddedDetail();
@@ -130,23 +133,30 @@ export class MessageListPanel {
         try {
             this.panel.webview.postMessage({ type: 'loading' });
 
-            const service = this.explorerProvider.getImapService(this.accountId);
-            const messages = await service.getMessages(this.folderPath, 50, 0, this.currentSearchQuery);
-
-            this.currentMessages = messages;
-
             const config = vscode.workspace.getConfiguration('mailClient');
+            const limit = config.get<number>('messagesPerPage', 50);
+            const offset = (this.currentPage - 1) * limit;
+
+            const service = this.explorerProvider.getImapService(this.accountId);
+            const result = await service.getMessages(this.folderPath, limit, offset, this.currentSearchQuery);
+
+            this.currentMessages = result.messages;
+            this.totalMessages = result.total;
+
             const locale = config.get<string>('locale') || undefined;
             const displayMode = config.get<string>('messageDisplayMode', 'split');
 
             this.panel.webview.postMessage({
                 type: 'messages',
-                messages: messages.map(m => ({
+                messages: result.messages.map(m => ({
                     ...m,
                     date: m.date.toISOString(),
                     fromDisplay: m.from.name || m.from.address,
                     toDisplay: m.to.map(t => t.name || t.address).join(', '),
                 })),
+                total: this.totalMessages,
+                page: this.currentPage,
+                limit: limit,
                 folderPath: this.folderPath,
                 locale: locale,
                 displayMode: displayMode,
@@ -283,6 +293,17 @@ export class MessageListPanel {
                 break;
             case 'search':
                 this.currentSearchQuery = message.query || '';
+                this.currentPage = 1;
+                this.loadMessages();
+                break;
+            case 'prevPage':
+                if (this.currentPage > 1) {
+                    this.currentPage--;
+                    this.loadMessages();
+                }
+                break;
+            case 'nextPage':
+                this.currentPage++;
                 this.loadMessages();
                 break;
             case 'compose':
@@ -310,7 +331,10 @@ export class MessageListPanel {
             font-size: var(--vscode-font-size);
             color: var(--vscode-foreground);
             background: var(--vscode-editor-background);
-            overflow-x: hidden; /* Prevent horizontal scroll */
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
         }
         
         /* Toolbar */
@@ -320,8 +344,7 @@ export class MessageListPanel {
             padding: 0;
             border-bottom: 1px solid var(--vscode-widget-border);
             background: var(--vscode-editorWidget-background);
-            position: sticky;
-            top: 0;
+            flex-shrink: 0;
             z-index: 10;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             height: 36px;
@@ -361,6 +384,14 @@ export class MessageListPanel {
             width: 42px;
             justify-content: center;
         }
+        #btnPrevPage, #btnNextPage {
+            color: var(--vscode-foreground);
+            padding: 0;
+            width: 42px;
+            justify-content: center;
+            border-left: 1px solid var(--vscode-widget-border);
+            height: 100%;
+        }
         #btnCompose {
             background: #ff9800;
             color: #ffffff;
@@ -369,7 +400,7 @@ export class MessageListPanel {
         #btnCompose:hover {
             background: #e68a00 !important;
         }
-        #btnCompose svg, #btnRefresh svg {
+        #btnCompose svg, #btnRefresh svg, #btnPrevPage svg, #btnNextPage svg {
             width: 20px;
             height: 20px;
             fill: none;
@@ -377,6 +408,19 @@ export class MessageListPanel {
             stroke-width: 2;
             stroke-linecap: round;
             stroke-linejoin: round;
+        }
+
+        #pageInfo {
+            background: var(--vscode-badge-background);
+            color: var(--vscode-badge-foreground);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin: 0 16px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            display: inline-block;
         }
 
         /* Search Box */
@@ -416,6 +460,13 @@ export class MessageListPanel {
         .search-container button:hover {
             color: var(--vscode-errorForeground) !important;
             background: transparent !important;
+        }
+
+        #content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
         }
 
         /* Message List */
@@ -597,6 +648,13 @@ export class MessageListPanel {
         }
         .error-msg { color: var(--vscode-errorForeground); }
 
+        #btnPrevPage:disabled, #btnNextPage:disabled {
+            opacity: 0.3 !important;
+            cursor: default !important;
+            background: transparent !important;
+            color: var(--vscode-foreground) !important;
+        }
+
         /* Loading Spinner */
         .loader {
             width: 18px;
@@ -625,6 +683,17 @@ export class MessageListPanel {
 <body>
     <div class="toolbar">
         <span class="toolbar-title" id="folderTitle">Messages</span>
+        
+        <div id="paginationContainer" style="display: none; align-items: center; height: 100%;">
+            <span id="pageInfo"></span>
+            <button id="btnPrevPage" title="Previous Page">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <button id="btnNextPage" title="Next Page">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+        </div>
+
         <div class="search-container">
             <input type="text" id="searchInput" placeholder="Search in folder..." title="Type query and press Enter to search using IMAP" value="${this.currentSearchQuery ? this.currentSearchQuery.replace(/"/g, '&quot;') : ''}" />
             <button id="btnClearSearch" title="Clear Search" style="display: ${this.currentSearchQuery ? 'block' : 'none'};">✕</button>
@@ -650,6 +719,14 @@ export class MessageListPanel {
 
         document.getElementById('btnCompose').addEventListener('click', () => {
             vscode.postMessage({ type: 'compose' });
+        });
+
+        document.getElementById('btnPrevPage').addEventListener('click', () => {
+            vscode.postMessage({ type: 'prevPage' });
+        });
+
+        document.getElementById('btnNextPage').addEventListener('click', () => {
+            vscode.postMessage({ type: 'nextPage' });
         });
 
         searchInput.addEventListener('keydown', (e) => {
@@ -790,6 +867,31 @@ export class MessageListPanel {
                     titleEl.textContent = titleText;
                     if (msg.locale) { currentLocale = msg.locale; }
                     if (msg.displayMode) { document.body.className = 'mode-' + msg.displayMode; }
+                    
+                    const paginationEl = document.getElementById('paginationContainer');
+                    const pageInfoEl = document.getElementById('pageInfo');
+                    const btnPrevPage = document.getElementById('btnPrevPage');
+                    const btnNextPage = document.getElementById('btnNextPage');
+                    
+                    if (msg.total > 0) {
+                        paginationEl.style.display = 'flex';
+                        const totalPages = Math.ceil(msg.total / msg.limit);
+                        
+                        if (totalPages <= 1) {
+                            pageInfoEl.textContent = msg.total + ' messages';
+                            btnPrevPage.style.display = 'none';
+                            btnNextPage.style.display = 'none';
+                        } else {
+                            pageInfoEl.textContent = 'Page ' + msg.page + ' of ' + totalPages + ' (' + msg.total + ')';
+                            btnPrevPage.style.display = 'flex';
+                            btnNextPage.style.display = 'flex';
+                            btnPrevPage.disabled = msg.page <= 1;
+                            btnNextPage.disabled = msg.page >= totalPages;
+                        }
+                    } else {
+                        paginationEl.style.display = 'none';
+                    }
+
                     renderMessages(msg.messages);
                     if (msg.activeUid !== undefined) {
                         const item = document.querySelector('.message-item[data-uid="' + msg.activeUid + '"]');

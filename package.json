@@ -198,6 +198,13 @@
           ],
           "description": "How to display the message detail when opened from the message list."
         },
+        "mailClient.messagesPerPage": {
+          "type": "number",
+          "default": 50,
+          "minimum": 10,
+          "maximum": 1000,
+          "description": "Number of messages to download and display per page in the message list."
+        },
         "mailClient.refreshInterval": {
           "type": "number",
           "default": 60,

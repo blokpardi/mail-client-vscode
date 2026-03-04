@@ -1,5 +1,10 @@
 # Changelog
 
+## [ upcoming ]
+
+### Added
+- **Message Pagination**: Added support for paginating through the message list. Users can now configure the number of messages downloaded per page via the `mailClient.messagesPerPage` setting (default is 50). Improved UI pagination controls with adaptive size and spacing.
+
 ## [0.10.2]
 
 ### Fixed

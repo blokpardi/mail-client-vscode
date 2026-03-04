@@ -99,7 +99,7 @@ export class ImapService {
      * @param limit - Maximum number of messages to fetch
      * @param offset - Number of messages to skip (for pagination)
      */
-    async getMessages(folderPath: string, limit = 50, offset = 0, searchQuery?: string): Promise<IMailMessage[]> {
+    async getMessages(folderPath: string, limit = 50, offset = 0, searchQuery?: string): Promise<{ messages: IMailMessage[], total: number }> {
         await this.ensureConnected();
 
         const lock = await this.client!.getMailboxLock(folderPath);
@@ -108,7 +108,7 @@ export class ImapService {
             const total = mailbox.exists;
 
             if (total === 0) {
-                return [];
+                return { messages: [], total: 0 };
             }
 
             let range: string | number[] = '';
@@ -118,7 +118,7 @@ export class ImapService {
                 // Perform search
                 const searchResult = await this.client!.search({ text: searchQuery }, { uid: true });
                 if (!searchResult || searchResult.length === 0) {
-                    return [];
+                    return { messages: [], total: 0 };
                 }
                 
                 // Pagination on search results
@@ -128,7 +128,7 @@ export class ImapService {
                 const pagedUids = searchResult.slice(startIdx, endIdx);
                 
                 if (pagedUids.length === 0) {
-                    return [];
+                    return { messages: [], total: searchResult.length };
                 }
                 range = pagedUids;
                 isUid = true;
@@ -175,7 +175,14 @@ export class ImapService {
 
             // Sort by date descending (newest first)
             messages.sort((a, b) => b.date.getTime() - a.date.getTime());
-            return messages;
+            
+            const searchReq = (isUid && searchQuery) ? await this.client!.search({ text: searchQuery }, { uid: true }) : false;
+            const totalMessages = (isUid && searchQuery) ? (searchReq ? searchReq.length : 0) : total;
+
+            return {
+                messages,
+                total: totalMessages
+            };
         } finally {
             lock.release();
         }
