@@ -232,7 +232,7 @@ export function getSharedScripts(nonce: string, userLocale: string): string {
                     '    box-sizing: border-box;' +
                     '}' +
                     'img { max-width: 100%; height: auto; }' +
-                    'table { max-width: 100%; overflow-x: auto; display: block; }' +
+                    'table { max-width: 100%; }' +
                     'pre { white-space: pre-wrap; word-break: break-word; }';
 
                  if (doc.head) {

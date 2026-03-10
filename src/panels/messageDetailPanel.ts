@@ -227,13 +227,17 @@ export class MessageDetailPanel {
 
     private async loadMessage(): Promise<void> {
         try {
+            // Start listening for webviewReady BEFORE setting HTML to avoid
+            // a race where the webview signals ready before the listener exists.
+            const readyPromise = this.waitForWebviewReady();
+
             this.panel.webview.html = this.getHtmlContent();
 
             // Fetch message data and wait for webview to be ready in parallel.
             // VS Code silently drops postMessage calls if the webview hasn't
             // finished loading, so we must wait for the 'webviewReady' signal.
             const [, message] = await Promise.all([
-                this.waitForWebviewReady(),
+                readyPromise,
                 this.explorerProvider.getImapService(this.accountId)
                     .getMessage(this.folderPath, this.uid),
             ]);
