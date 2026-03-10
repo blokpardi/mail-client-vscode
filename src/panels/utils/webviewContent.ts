@@ -62,12 +62,12 @@ export function getSharedStyles(nonce: string): string {
         /* Message body iframe */
         .message-body-iframe {
             width: 100%;
-            min-width: 100%;
+            max-width: 100%;
             margin: 0;
             border: none;
             display: block;
             background-color: #ffffff;
-            /* Height and potentially width will be set by JS */
+            /* Height will be set by JS */
         }
 
         /* External Images Warning */
@@ -170,10 +170,8 @@ export function getSharedScripts(nonce: string, userLocale: string): string {
                 '        window.parent.postMessage({ type: "error", message: "Iframe script error: " + msg }, "*");' +
                 '    };' +
                 '    function sendResize() {' +
-                '        const wrapper = document.getElementById("resizer-wrapper");' +
                 '        const height = Math.max(document.body.scrollHeight, document.body.offsetHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight);' +
-                '        const width = wrapper ? wrapper.offsetWidth : document.body.scrollWidth;' +
-                '        window.parent.postMessage({ type: "resize", height: height + 20, width: width, source: window.name }, "*");' +
+                '        window.parent.postMessage({ type: "resize", height: height + 20, source: window.name }, "*");' +
                 '    }' +
                 '    const resizeObserver = new ResizeObserver(entries => sendResize());' +
                 '    if(document.body) resizeObserver.observe(document.body);' +
@@ -218,18 +216,23 @@ export function getSharedScripts(nonce: string, userLocale: string): string {
                     link.setAttribute('target', '_blank');
                 });
                 
-                bodyContent = doc.body ? '<div id="resizer-wrapper" style="display: table; min-width: 100%;">' + doc.body.innerHTML + '</div>' : '';
+                bodyContent = doc.body ? '<div id="resizer-wrapper" style="display: block; width: 100%; max-width: 100%; overflow: hidden;">' + doc.body.innerHTML + '</div>' : '';
                  
                  // Add base styles
                  const style = doc.createElement('style');
-                 style.textContent = 
+                 style.textContent =
                     'body {' +
                     '    background-color: #ffffff;' +
                     '    color: #000000;' +
                     '    margin: 0;' +
                     '    padding: 16px;' +
                     '    font-family: sans-serif;' +
+                    '    max-width: 100%;' +
+                    '    overflow-x: hidden;' +
+                    '    box-sizing: border-box;' +
                     '}' +
+                    'img { max-width: 100%; height: auto; }' +
+                    'table { max-width: 100%; overflow-x: auto; display: block; }' +
                     'pre { white-space: pre-wrap; word-break: break-word; }';
 
                  if (doc.head) {
@@ -267,7 +270,7 @@ export function getSharedScripts(nonce: string, userLocale: string): string {
                 '        }' +
                 '    </style>' +
                 '</head>' +
-                '<body><div id="resizer-wrapper" style="display: table; min-width: 100%;">' + escapeHtml(msg.text) + '</div>' + 
+                '<body><div id="resizer-wrapper" style="display: block; width: 100%; max-width: 100%; overflow: hidden;">' + escapeHtml(msg.text) + '</div>' + 
                 '<script nonce="${nonce}">' + resizeScriptContent + '<\\/script>' +
                 '</body>';
             } else {
@@ -283,7 +286,7 @@ export function getSharedScripts(nonce: string, userLocale: string): string {
                 '        }' +
                 '    </style>' +
                 '</head>' +
-                '<body><div id="resizer-wrapper" style="display: table; min-width: 100%;">No content available.</div>' + 
+                '<body><div id="resizer-wrapper" style="display: block; width: 100%; max-width: 100%; overflow: hidden;">No content available.</div>' + 
                 '<script nonce="${nonce}">' + resizeScriptContent + '<\\/script>' +
                 '</body>';
             }
@@ -386,14 +389,7 @@ export function getSharedScripts(nonce: string, userLocale: string): string {
                      const iframe = document.getElementsByName(event.data.source)[0];
                      if (iframe) {
                          iframe.style.height = event.data.height + 'px';
-                         if (event.data.width) {
-                             const containerWidth = iframe.parentElement ? iframe.parentElement.clientWidth : window.innerWidth;
-                             if (event.data.width > containerWidth) {
-                                 iframe.style.width = event.data.width + 'px';
-                             } else {
-                                 iframe.style.width = '100%';
-                             }
-                         }
+                         iframe.style.width = '100%';
                      }
                 } else if (event.data.type === 'openExternal' && event.data.url) {
                     if (typeof vscode !== 'undefined') {
