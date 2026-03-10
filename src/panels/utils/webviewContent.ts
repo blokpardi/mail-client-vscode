@@ -169,13 +169,19 @@ export function getSharedScripts(nonce: string, userLocale: string): string {
                 '        console.error("Iframe script error:", msg, url, line);' +
                 '        window.parent.postMessage({ type: "error", message: "Iframe script error: " + msg }, "*");' +
                 '    };' +
+                '    var lastSentHeight = 0;' +
                 '    function sendResize() {' +
-                '        const height = Math.max(document.body.scrollHeight, document.body.offsetHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight);' +
-                '        window.parent.postMessage({ type: "resize", height: height + 20, source: window.name }, "*");' +
+                '        var wrapper = document.getElementById("resizer-wrapper");' +
+                '        var height = wrapper ? wrapper.scrollHeight : document.body.scrollHeight;' +
+                '        height += 20;' +
+                '        if (height !== lastSentHeight) {' +
+                '            lastSentHeight = height;' +
+                '            window.parent.postMessage({ type: "resize", height: height, source: window.name }, "*");' +
+                '        }' +
                 '    }' +
-                '    const resizeObserver = new ResizeObserver(entries => sendResize());' +
-                '    if(document.body) resizeObserver.observe(document.body);' +
-                '    if(document.documentElement) resizeObserver.observe(document.documentElement);' +
+                '    var resizeObserver = new ResizeObserver(function() { sendResize(); });' +
+                '    var wrapper = document.getElementById("resizer-wrapper");' +
+                '    if (wrapper) resizeObserver.observe(wrapper);' +
                 '    window.addEventListener("load", sendResize);' +
                 '    sendResize();' +
                 '    document.addEventListener("click", function(e) {' +
