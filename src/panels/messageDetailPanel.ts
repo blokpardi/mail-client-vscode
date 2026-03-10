@@ -209,13 +209,34 @@ export class MessageDetailPanel {
         return new MessageDetailPanel(panel, explorerProvider, accountManager, accountId, folderPath, uid, true, onBack);
     }
 
+    private waitForWebviewReady(): Promise<void> {
+        return new Promise<void>((resolve) => {
+            const timeout = setTimeout(() => {
+                disposable.dispose();
+                resolve(); // Proceed anyway after timeout
+            }, 5000);
+            const disposable = this.panel.webview.onDidReceiveMessage((msg) => {
+                if (msg.type === 'webviewReady') {
+                    clearTimeout(timeout);
+                    disposable.dispose();
+                    resolve();
+                }
+            });
+        });
+    }
+
     private async loadMessage(): Promise<void> {
         try {
             this.panel.webview.html = this.getHtmlContent();
-            this.panel.webview.postMessage({ type: 'loading' });
 
-            const service = this.explorerProvider.getImapService(this.accountId);
-            const message = await service.getMessage(this.folderPath, this.uid);
+            // Fetch message data and wait for webview to be ready in parallel.
+            // VS Code silently drops postMessage calls if the webview hasn't
+            // finished loading, so we must wait for the 'webviewReady' signal.
+            const [, message] = await Promise.all([
+                this.waitForWebviewReady(),
+                this.explorerProvider.getImapService(this.accountId)
+                    .getMessage(this.folderPath, this.uid),
+            ]);
 
             this.panel.title = message.subject || '(no subject)';
 

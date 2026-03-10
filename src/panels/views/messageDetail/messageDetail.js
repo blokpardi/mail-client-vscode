@@ -455,6 +455,7 @@ window.addEventListener('message', (event) => {
                 console.log('Message rendered successfully');
             } catch (e) {
                 console.error('Render error', e);
+                loadingEl.classList.add('hidden');
                 bodyEl.innerHTML = '<div class="error-msg">Render Error: ' + (e instanceof Error ? e.message : String(e)) + '</div>';
             }
             break;
@@ -470,6 +471,9 @@ window.addEventListener('message', (event) => {
             break;
     }
 });
+
+// Signal to the extension that the webview is ready to receive messages
+vscode.postMessage({ type: 'webviewReady' });
 
 function downloadAttachment(filename) {
     vscode.postMessage({ type: 'downloadAttachment', filename: filename });
