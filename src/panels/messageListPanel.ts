@@ -22,6 +22,7 @@ export class MessageListPanel {
     private currentPage: number = 1;
     private totalMessages: number = 0;
     private lastUnreadCount?: number;
+    private pendingRefresh: boolean = false;
 
     private constructor(
         panel: vscode.WebviewPanel,
@@ -127,7 +128,12 @@ export class MessageListPanel {
         const key = `${accountId}:${folderPath}`;
         const panel = MessageListPanel.panels.get(key);
         if (panel) {
-            panel.loadMessages();
+            if (panel.embeddedDetailPanel) {
+                // Defer refresh until the user navigates back to the list
+                panel.pendingRefresh = true;
+            } else {
+                panel.loadMessages();
+            }
         }
     }
 
@@ -251,12 +257,13 @@ export class MessageListPanel {
 
         const onBack = () => {
             this.embeddedDetailPanel = undefined;
-            
+
             const folderInfo = this.explorerProvider.getFolderInfo(this.accountId, this.folderPath);
             this.updateTitle(folderInfo?.unseenMessages);
-            
+
             this.panel.webview.html = this.getHtmlContent();
-            this.loadMessages(); // Re-fetch or re-render list
+            this.pendingRefresh = false;
+            this.loadMessages();
         };
 
         this.embeddedDetailPanel = MessageDetailPanel.createEmbedded(
