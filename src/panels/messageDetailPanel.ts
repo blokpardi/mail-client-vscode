@@ -296,7 +296,7 @@ export class MessageDetailPanel {
 
             // Mark as seen if not already
             if (!message.seen) {
-                await service.markMessageSeen(this.folderPath, this.uid);
+                await this.explorerProvider.getImapService(this.accountId).markMessageSeen(this.folderPath, this.uid);
                 // Update local cache and fire tree update without full network reload
                 this.explorerProvider.decrementUnread(this.accountId, this.folderPath);
                 // Refresh to update unread counts on the message list panel
