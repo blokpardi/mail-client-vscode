@@ -124,10 +124,16 @@ export class MessageListPanel {
     /**
      * Refreshes the message list for a specific folder (if a panel is open for it).
      */
-    static refreshFolder(accountId: string, folderPath: string): void {
+    static refreshFolder(accountId: string, folderPath: string, activeUid?: number, autoOpen?: boolean): void {
         const key = `${accountId}:${folderPath}`;
         const panel = MessageListPanel.panels.get(key);
         if (panel) {
+            if (activeUid !== undefined) {
+                panel.activeUid = activeUid;
+            }
+            if (autoOpen && activeUid !== undefined) {
+                panel.openMessage(activeUid);
+            }
             if (panel.embeddedDetailPanel) {
                 // Defer refresh until the user navigates back to the list
                 panel.pendingRefresh = true;
@@ -277,6 +283,33 @@ export class MessageListPanel {
         );
     }
 
+    public openMessage(uid: number): void {
+        this.activeUid = uid;
+        this.panel.webview.postMessage({ type: 'setActive', uid: uid });
+
+        const config = vscode.workspace.getConfiguration('mailClient');
+        const displayMode = config.get<string>('messageDisplayMode', 'preview');
+
+        if (displayMode === 'preview') {
+            this.showDetailEmbedded(uid);
+        } else if (displayMode === 'split') {
+            MessageDetailPanel.showInSplit(
+                this.explorerProvider,
+                this.accountManager,
+                this.accountId,
+                this.folderPath,
+                uid
+            );
+        } else {
+            // window mode
+            vscode.commands.executeCommand('mailClient.openMessage', {
+                accountId: this.accountId,
+                folderPath: this.folderPath,
+                uid: uid,
+            });
+        }
+    }
+
     private handleMessage(message: any): void {
         if (this.embeddedDetailPanel) {
             return; // let the embedded panel handle its own messages
@@ -284,30 +317,7 @@ export class MessageListPanel {
 
         switch (message.type) {
             case 'openMessage':
-                this.activeUid = message.uid;
-                this.panel.webview.postMessage({ type: 'setActive', uid: message.uid });
-
-                const config = vscode.workspace.getConfiguration('mailClient');
-                const displayMode = config.get<string>('messageDisplayMode', 'preview');
-
-                if (displayMode === 'preview') {
-                    this.showDetailEmbedded(message.uid);
-                } else if (displayMode === 'split') {
-                    MessageDetailPanel.showInSplit(
-                        this.explorerProvider,
-                        this.accountManager,
-                        this.accountId,
-                        this.folderPath,
-                        message.uid
-                    );
-                } else {
-                    // window mode
-                    vscode.commands.executeCommand('mailClient.openMessage', {
-                        accountId: this.accountId,
-                        folderPath: this.folderPath,
-                        uid: message.uid,
-                    });
-                }
+                this.openMessage(message.uid);
                 break;
             case 'reply':
                 vscode.commands.executeCommand('mailClient.reply', {
@@ -390,8 +400,12 @@ export class MessageListPanel {
             const actions = newUid ? [undoLabel] : [];
             vscode.window.showInformationMessage(`Moved to ${targetFolder}`, ...actions).then(selection => {
                 if (selection === undoLabel && newUid) {
-                    service.moveMessage(targetFolder, newUid, this.folderPath).then(() => {
+                    service.moveMessage(targetFolder, newUid, this.folderPath).then((restoredUid) => {
                         vscode.window.showInformationMessage(`Moved back to ${this.folderName}`);
+                        if (restoredUid) {
+                            this.activeUid = restoredUid;
+                            this.openMessage(restoredUid);
+                        }
                         this.loadMessages();
                         this.explorerProvider.refresh();
                     }).catch(err => {
@@ -454,8 +468,12 @@ export class MessageListPanel {
             const actions = newUid ? [undoLabel] : [];
             vscode.window.showInformationMessage(`Moved to ${targetPath}`, ...actions).then(selection => {
                 if (selection === undoLabel && newUid) {
-                    service.moveMessage(targetPath, newUid, this.folderPath).then(() => {
+                    service.moveMessage(targetPath, newUid, this.folderPath).then((restoredUid) => {
                         vscode.window.showInformationMessage(`Moved back to ${this.folderName}`);
+                        if (restoredUid) {
+                            this.activeUid = restoredUid;
+                            this.openMessage(restoredUid);
+                        }
                         this.loadMessages();
                         this.explorerProvider.refresh();
                     }).catch(err => {

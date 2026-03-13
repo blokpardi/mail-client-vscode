@@ -3,7 +3,7 @@
   "displayName": "Mail Client",
   "description": "IMAP email client for VS Code",
   "icon": "docs/logo.png",
-  "version": "0.13.16",
+  "version": "0.15.2",
   "publisher": "wdtbrchan",
   "license": "Apache-2.0",
   "repository": {
@@ -237,6 +237,14 @@
           },
           "default": [],
           "description": "List of sender email addresses that will automatically load remote images."
+        },
+        "mailClient.contacts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "List of email contacts. Format: 'Name <email@domain.com>' or 'email@domain.com'."
         }
       }
     },

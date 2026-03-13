@@ -1,7 +1,24 @@
 # Changelog
- 
-## [0.13.10]
+
+## [0.15.2]
+- **IMAP Service**: Added an automatic reconnection attempt when opening a message if the connection was lost.
+
+## [0.15.1]
+- **Compose**: Improved address book autocomplete to correctly handle commas within quoted names.
+- **Compose**: Names containing commas are now automatically quoted when selected from the autocomplete list.
+- **Compose**: Automatically strip trailing commas from `To`, `Cc`, and `Bcc` fields before sending an email.
+- **UI Design**: Improved visibility of the address autocomplete dropdown with a standard VS Code focus border and slightly different background.
+
+## [0.15.0]
+- **Address Book**: Added a new "Address Book" feature with contact management and autocomplete functionality.
+- **Contacts**: New `mailClient.contacts` configuration setting for storing email addresses with display names.
+- **Message Detail**: Added an inline `[+]` button next to unknown email addresses to quickly add them to the contacts list.
+- **Compose**: Implemented email address autocomplete for `To`, `Cc`, and `Bcc` fields using the contact list, with support for multiple comma-separated addresses and keyboard navigation.
+
+## [0.14.0]
 - **Message Move**: Added an "Undo" option to the move notification, allowing users to quickly revert moving messages between folders.
+
+## [0.13.10]
 - **Unread Count**: Added the unread message count to the folder tab title (e.g., `INBOX (3)`). The count is automatically updated when messages are marked as read or folders are refreshed.
 - **Performance**: Optimized unread count synchronization when marking messages as read in the detail view by updating the local folder cache directly, avoiding unnecessary IMAP `list` calls.
 - **Unread Count**: Restricted the Activity Bar unread count badge to only sum messages from the "Inbox" folder, preventing unread messages in other folders (like Junk or Sent) from affecting the total badge count.

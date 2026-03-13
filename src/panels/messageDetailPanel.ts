@@ -246,6 +246,7 @@ export class MessageDetailPanel {
 
             const config = vscode.workspace.getConfiguration('mailClient');
             const whitelist: string[] = config.get('imageWhitelist') || [];
+            const contacts: string[] = config.get('contacts') || [];
             const isWhitelisted = whitelist.includes(message.from.address);
             const folderSettings = this.getFolderSettings();
             const isSpam = this.folderPath === (folderSettings.spam || 'Spam');
@@ -294,7 +295,8 @@ export class MessageDetailPanel {
                     isSpam: isSpam,
                     pairedJiraIssue: pairedJiraIssue,
                     pairedJiraIssueSummary: pairedJiraIssueSummary,
-                    hasJira: !!this.accountManager.getAccount(this.accountId)?.jiraApiKey
+                    hasJira: !!this.accountManager.getAccount(this.accountId)?.jiraApiKey,
+                    contacts: contacts
                 },
             });
 
@@ -364,6 +366,9 @@ export class MessageDetailPanel {
             case 'jiraComment':
                 this.postJiraComment(message.issueKey, message.comment);
                 break;
+            case 'addContact':
+                this.addContact(message.contact);
+                break;
             case 'back':
                 this.dispose();
                 break;
@@ -378,6 +383,22 @@ export class MessageDetailPanel {
             await config.update('imageWhitelist', newWhitelist, vscode.ConfigurationTarget.Global);
             vscode.window.showInformationMessage(`Sender ${sender} whitelisted.`);
             this.loadMessage(); // Reload message to show images
+        }
+    }
+
+    private async addContact(contact: string): Promise<void> {
+        if (!contact) return;
+        const config = vscode.workspace.getConfiguration('mailClient');
+        const contacts: string[] = config.get('contacts') || [];
+        if (!contacts.includes(contact)) {
+            const newContacts = [...contacts, contact];
+            await config.update('contacts', newContacts, vscode.ConfigurationTarget.Global);
+            vscode.window.showInformationMessage(`Added to contacts: ${contact}`);
+            this.panel.webview.postMessage({
+                type: 'contactAdded',
+                contact: contact,
+                contacts: newContacts
+            });
         }
     }
 
@@ -565,9 +586,9 @@ export class MessageDetailPanel {
             const originalFolderPath = this.folderPath;
             vscode.window.showInformationMessage(`Moved to ${targetFolder}`, ...actions).then(selection => {
                 if (selection === undoLabel && newUid) {
-                    service.moveMessage(targetFolder, newUid, originalFolderPath).then(() => {
+                    service.moveMessage(targetFolder, newUid, originalFolderPath).then((restoredUid) => {
                         vscode.window.showInformationMessage(`Moved back to ${originalFolderPath}`);
-                        MessageListPanel.refreshFolder(this.accountId, originalFolderPath);
+                        MessageListPanel.refreshFolder(this.accountId, originalFolderPath, restoredUid, true);
                         this.explorerProvider.refresh();
                     }).catch(err => {
                         vscode.window.showErrorMessage(`Failed to undo move: ${err.message}`);
@@ -615,9 +636,9 @@ export class MessageDetailPanel {
             const originalFolderPath = this.folderPath;
             vscode.window.showInformationMessage(`Moved to ${targetPath}`, ...actions).then(selection => {
                 if (selection === undoLabel && newUid) {
-                    service.moveMessage(targetPath, newUid, originalFolderPath).then(() => {
+                    service.moveMessage(targetPath, newUid, originalFolderPath).then((restoredUid) => {
                         vscode.window.showInformationMessage(`Moved back to ${originalFolderPath}`);
-                        MessageListPanel.refreshFolder(this.accountId, originalFolderPath);
+                        MessageListPanel.refreshFolder(this.accountId, originalFolderPath, restoredUid, true);
                         this.explorerProvider.refresh();
                     }).catch(err => {
                         vscode.window.showErrorMessage(`Failed to undo move: ${err.message}`);
